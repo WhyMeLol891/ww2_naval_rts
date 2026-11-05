@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PACIFIC ARMED: 6-Player Naval War & Harbor Command 1942</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 3D WebGL Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Drag Selection Box -->
+    <div id="selection-box"></div>
+
+    <!-- HUD Overlay -->
+    <div id="ui-layer">
+        <!-- TOP COMMAND BAR -->
+        <header class="top-bar interactive">
+            <div class="top-bar-left">
+                <div class="game-title">
+                    ⚓ PACIFIC ARMED <span class="badge">6-PLAYER RTS</span>
+                </div>
+                <!-- Scenario Selector -->
+                <select id="scenario-select" class="scenario-dropdown">
+                    <option value="six_player" selected>★ Grand 6-Player Naval War (Hexagonal Harbors)</option>
+                    <option value="midway">Battle of Midway (1942) - Carrier Duel</option>
+                    <option value="ironbottom">Ironbottom Sound (1942) - Night Ambush</option>
+                    <option value="leyte">Clash of Titans: Leyte Gulf (1944) - Battleship Line</option>
+                </select>
+            </div>
+
+            <!-- 6-PLAYER SCOREBOARD -->
+            <div class="top-bar-center">
+                <div id="six-player-scoreboard" class="scoreboard-strip">
+                    <!-- Populated dynamically: USN, IJN, RN, KM, RM, VVS -->
+                </div>
+            </div>
+
+            <div class="top-bar-right">
+                <button id="btn-pause" class="ui-btn">❚❚ PAUSE</button>
+                <button id="btn-speed-1x" class="ui-btn active">1X</button>
+                <button id="btn-speed-2x" class="ui-btn">2X</button>
+                <button id="btn-speed-4x" class="ui-btn">4X</button>
+                <button id="btn-cam-toggle" class="ui-btn" title="Toggle Tactical / Action Cam (Key: C)">🎥 ACTION CAM</button>
+                <button id="btn-audio" class="ui-btn">🔊 AUDIO</button>
+            </div>
+        </header>
+
+        <!-- DOCKYARD PRODUCTION BAR -->
+        <section class="dockyard-bar interactive">
+            <div class="resource-indicator">
+                <span>🔩</span> <span id="steel-count">900 Steel (+18/s)</span>
+            </div>
+            <div id="harbor-queue-info" class="dockyard-queue-status">Drydock Idle</div>
+            <div class="dockyard-btn-group">
+                <button id="btn-build-dd" class="dock-btn" title="Commission Fast Destroyer (Hotkey: 1)">
+                    <span class="dock-cost">1: 300🔩</span> +DESTROYER
+                </button>
+                <button id="btn-build-ss" class="dock-btn" title="Commission Stealth Submarine (Hotkey: 2)">
+                    <span class="dock-cost">2: 350🔩</span> +SUBMARINE
+                </button>
+                <button id="btn-build-ca" class="dock-btn" title="Commission Heavy Cruiser (Hotkey: 3)">
+                    <span class="dock-cost">3: 550🔩</span> +CRUISER
+                </button>
+                <button id="btn-build-bb" class="dock-btn" title="Commission Heavy Battleship (Hotkey: 4)">
+                    <span class="dock-cost">4: 950🔩</span> +BATTLESHIP
+                </button>
+                <button id="btn-build-cv" class="dock-btn" title="Commission Aircraft Carrier (Hotkey: 5)">
+                    <span class="dock-cost">5: 1100🔩</span> +CARRIER
+                </button>
+            </div>
+        </section>
+
+        <!-- MIDDLE ROW: BRIEFING & COMBAT LOG -->
+        <div class="middle-row">
+            <!-- Left: Mission Briefing -->
+            <div class="briefing-panel interactive">
+                <h3 id="scenario-title">Grand 6-Player Naval War</h3>
+                <p id="scenario-brief">
+                    Admiral: Command the US Navy in a 6-player global naval battle! Each player controls a fortified Harbor Base equipped with heavy coastal artillery, dockyard shipyards, and repair drydocks. Collect steel over time, commission new warships, bombard enemy harbors, and conquer the Pacific!
+                </p>
+            </div>
+
+            <!-- Right: Real-time Radio / Combat Log -->
+            <div id="combat-log" class="combat-log-container interactive">
+                <!-- Log entries added dynamically -->
+            </div>
+        </div>
+
+        <!-- BOTTOM BAR: RADAR, COMMAND CENTER & HELP -->
+        <footer class="bottom-bar">
+            <!-- Left: Radar Minimap -->
+            <div class="minimap-panel interactive" title="Click or drag on minimap to jump camera">
+                <canvas id="minimap-canvas" width="175" height="175"></canvas>
+                <div class="minimap-label">RADAR SCANNER</div>
+            </div>
+
+            <!-- Center: Flagship Command & Status Card -->
+            <div id="ship-card" class="command-center interactive">
+                <div class="ship-card-details">
+                    <div class="ship-header">
+                        <div class="ship-title-area">
+                            <span id="ship-name" class="ship-name">USS MISSOURI</span>
+                            <span id="ship-class" class="ship-class">BB - BATTLESHIP</span>
+                        </div>
+                        <div class="ship-telemetry">
+                            <span>SPD: <span id="ship-speed-text" class="telemetry-val">0.0 KTS</span></span>
+                            <span>HDG: <span id="ship-heading-text" class="telemetry-val">000°</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Health & Armor Bar -->
+                    <div class="hp-container">
+                        <div class="hp-meta">
+                            <span>HULL INTEGRITY</span>
+                            <span id="ship-hp-text">3800 / 3800</span>
+                        </div>
+                        <div class="hp-bar-outer">
+                            <div id="ship-hp-bar" class="hp-bar-inner"></div>
+                        </div>
+                    </div>
+
+                    <!-- Status Alerts -->
+                    <div id="ship-status-alerts" class="status-badges">
+                        <span class="badge-ok">SYSTEMS NOMINAL</span>
+                    </div>
+
+                    <!-- Tactical Abilities Bar -->
+                    <div class="abilities-bar">
+                        <button id="btn-salvo" class="action-btn" title="Order all aligned main battery turrets to fire">
+                            <span class="key-hint">SPACE</span> 💥 BROADSIDE SALVO
+                        </button>
+                        <button id="btn-torpedo" class="action-btn" title="Launch a fan spread of high-explosive torpedoes">
+                            <span class="key-hint">Q</span> 🚀 TORPEDO SPREAD
+                        </button>
+                        <button id="btn-dive-bomb" class="action-btn" title="Launch SBD Dauntless dive bomber squadron (Carrier only)">
+                            <span class="key-hint">W</span> ✈ DIVE BOMBERS
+                        </button>
+                        <button id="btn-torp-bomb" class="action-btn" title="Launch TBF Avenger torpedo bomber squadron (Carrier only)">
+                            <span class="key-hint">E</span> ✈ TORP SQUADRON
+                        </button>
+                        <button id="btn-smoke" class="action-btn" title="Deploy smoke screen to break enemy line of sight (Destroyer only)">
+                            <span class="key-hint">R</span> 💨 SMOKE SCREEN
+                        </button>
+                        <button id="btn-dc" class="action-btn" title="Dispatch damage control party to extinguish fires and plug hull breaches">
+                            <span class="key-hint">T</span> 🛠 DAMAGE CONTROL
+                        </button>
+                        <button id="btn-sub-dive" class="action-btn" style="display:none;" title="Submerge underwater or surface (Submarine only)">
+                            ⚓ DIVE SUB
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Hotkeys & Tactical Orders Guide -->
+            <div class="help-panel interactive">
+                <h4>COMMAND ORDERS</h4>
+                <div><kbd>L-Click</kbd> Select Ship</div>
+                <div><kbd>Drag</kbd> Marquee Multi-Select</div>
+                <div><kbd>R-Click</kbd> Move / Bombard</div>
+                <div><kbd>M-Mouse</kbd> / <kbd>R-Drag</kbd> Orbit Cam</div>
+                <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Pan Camera</div>
+                <div><kbd>H</kbd> Jump to Home Harbor</div>
+                <div><kbd>1-5</kbd> Build Warships at Dock</div>
+                <div><kbd>C</kbd> Action / Follow Cam</div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- VICTORY / DEFEAT MODAL -->
+    <div id="game-over-modal" class="modal-overlay">
+        <div class="modal-content interactive">
+            <h2 id="modal-title" class="modal-title">6-PLAYER PACIFIC SUPREMACY!</h2>
+            <p id="modal-desc" class="modal-desc">
+                All 5 hostile fleets and enemy naval harbors have been crushed!
+            </p>
+            <div class="modal-buttons">
+                <button id="btn-restart" class="ui-btn btn-primary">PLAY AGAIN</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="libs/three.min.js"></script>
+    <script src="libs/OrbitControls.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/ocean.js"></script>
+    <script src="js/models.js"></script>
+    <script src="js/particles.js"></script>
+    <script src="js/fleet.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/scenarios.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
